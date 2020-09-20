@@ -1,0 +1,64 @@
+version: '3'
+services:
+  nginx:
+    build:
+      context: nginx
+    restart: always
+    ports:
+      - 1653:80
+    depends_on:
+      - api
+      - client
+
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_PASSWORD=1653
+      - POSTGRES_USER=twister
+      - POSTGRES_DB=test-fib
+    restart: always
+
+  redis:
+    image: redis:alpine
+
+  api:
+    depends_on:
+      - postgres
+      - redis
+    build:
+      context: api
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379'
+      - PGUSER=twister
+      - PGHOST=postgres
+      - PGDATABASE=test-fib
+      - PGPASSWORD=1653
+      - PGPORT=5432
+    volumes:
+      - /app/node_modules
+      - ./api:/app
+
+  worker:
+    depends_on:
+      - redis
+    build:
+      context: worker
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - /app/node_modules
+      - ./worker:/app
+
+  client:
+    depends_on:
+      - api
+      - worker
+    stdin_open: true
+    build:
+      context: client
+    volumes:
+    - /app/node_modules
+    - ./client:/app
+
